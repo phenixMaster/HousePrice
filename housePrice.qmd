@@ -1,0 +1,169 @@
+---
+title: "house_price_R_version"
+format: html
+---
+```{r}
+rm(list = ls())
+```
+
+```{r}
+# libraries
+suppressMessages(library(tidyverse))
+library(broom)
+```
+
+```{r}
+Data <- read.csv("/Users/mpaga/Downloads/train.csv",sep=",")
+dim(Data)
+```
+
+```{r}
+#remove Id colum
+Data["Id"] <- NULL
+dim(Data)
+```
+
+```{r}
+hist(Data$SalePrice)
+```
+
+```{r}
+summary(Data$SalePrice)
+```
+
+```{r}
+skimr::skim_without_charts(Data,where(is.numeric))-> num_skimData
+```
+
+```{r}
+(numVal_na <- num_skimData$skim_variable[num_skimData$n_missing !=0] )
+```
+
+These 3 variables present missing values.
+
+```{r}
+# check  na
+colMeans(is.na(Data[numVal_na]))
+```
+
+```{r}
+skimr::skim_without_charts(Data,where(is.character))-> cat_skimData
+```
+
+```{r}
+summary(cat_skimData)
+```
+
+```{r}
+cat_skimData$skim_variable[cat_skimData$n_missing !=0]
+```
+Let's impute some of these numerical features
+
+```{r}
+numVal_na
+```
+=== imputing with lm or RF ===
+
+```{r impute LotFrontage}
+Ds <- Data |>
+    select(where(is.numeric)) |>
+    select(-all_of(c('MSSubClass','LotArea','OverallQual')))
+
+#LotFrontage
+features2remove <- setdiff(numVal_na,"LotFrontage")
+indx = which(is.na(Ds$LotFrontage))
+
+Train <- Ds[-indx,]
+Train[features2remove] <- NULL
+Pred <- Ds[indx,]
+Pred[features2remove]<- NULL
+
+mdl <- lm(LotFrontage~.,data =Train)
+Data[indx,"LotFrontage"] <- unlist(predict(mdl,Pred))
+
+``` 
+
+```{r impute MasVnrArea}
+Ds <- Data |>
+    select(where(is.numeric)) |>
+    select(-all_of(c('MSSubClass','LotArea','OverallQual')))
+
+#MasVnrArea
+features2remove <- setdiff(numVal_na,"MasVnrArea")
+indx = which(is.na(Ds$MasVnrArea))
+
+Train <- Ds[-indx,]
+Train[features2remove] <- NULL
+Pred <- Ds[indx,]
+Pred[features2remove]<- NULL
+
+mdl <- lm(MasVnrArea~.,data =Train)
+Data[indx,"MasVnrArea" ] <- predict(mdl,Pred)
+```
+
+```{r impute GarageYrBlt }
+Ds <- Data |>
+    select(where(is.numeric)) |>
+    select(-all_of(c('MSSubClass','LotArea','OverallQual')))
+
+#GarageYrBlt 
+features2remove <- setdiff(numVal_na,"GarageYrBlt")
+indx = which(is.na(Ds$GarageYrBlt))
+
+Train <- Ds[-indx,]
+Train[features2remove] <- NULL
+Pred <- Ds[indx,]
+Pred[features2remove]<- NULL
+
+mdl <- lm(GarageYrBlt~.,data =Train)
+Data[indx,"GarageYrBlt" ] <- predict(mdl,Pred)
+```
+
+```{r}
+colMeans(is.na(Ds[numVal_na]))
+```
+
+```{r,eval = FALSE}
+featuresList <- numVal_na
+# imputation fonction 
+impute <- function(Data,feature, featuresList){
+  features2remove <- setdiff(featuresList,feature)
+  
+  # create Ds
+  Ds <- Data |> 
+    select_if(is.numeric) |> 
+    select(-all_of(features2remove),-c('MSSubClass','LotArea','OverallQual'))
+  feature_data <- Data[[feature]]
+  indx <- which(is.na(Ds[[feature]]))
+  #indx <- is.na(Ds[feature])
+ 
+  #Pred <- Ds |> 
+    #filter(is.na(feature)) |>
+    #select(-all_of(feature))
+  Pred <- Ds[indx,]
+  #Pred[indx,feature] <- 0
+  Train <- Ds[-indx,]
+
+  #Train <- Ds |> 
+    #filter(!is.na(feature)) 
+
+  
+# imp 
+  mdl <- lm(Train[[feature]]~.,data = Train)
+  pred <- predict(mdl,Pred)
+  #print(pred)
+  return(pred)
+}
+```
+
+```{r}
+colMeans(is.na(Data[numVal_na]))
+```
+
+```{r}
+summary(Data[numVal_na])
+```
+
+```{r}
+
+```
